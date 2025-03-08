@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeedGram - Social & Assistance Network</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8f9fa;
+            overscroll-behavior-y: none;
+        }
+        
+        /* Radar Animation */
+        .radar-circle {
+            position: absolute;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 50%;
+            animation: radar-pulse 3s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes radar-pulse {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Profile Markers */
+        .profile-marker {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .profile-marker:hover {
+            transform: scale(1.1);
+        }
+
+        /* Profile Card Animation */
+        .profile-card {
+            animation: slide-up 0.3s ease;
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Pulse Animation for SOS */
+        .sos-pulse {
+            animation: sos-pulse 1.5s infinite;
+        }
+
+        @keyframes sos-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(220, 38, 38, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+            }
+        }
+
+        /* Map Container */
+        .map-container {
+            height: calc(100vh - 4rem);
+            background: linear-gradient(to bottom, #1a1a1a, #2d2d2d);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Grid Pattern */
+        .map-grid {
+            background-image: 
+                linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+        }
+
+        .nearby-profile {
+            position: absolute;
+            transition: all 0.3s ease;
+        }
+
+        .profile-info-card {
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="h-screen flex flex-col">
+        <!-- Map View with Radar -->
+        <div v-if="currentView === 'map'" class="map-container">
+            <div class="map-grid"></div>
+            
+            <!-- Radar Circles -->
+            <div v-for="n in 3" :key="n" 
+                 :style="{
+                     width: n * 150 + 'px',
+                     height: n * 150 + 'px',
+                     left: 'calc(50% - ' + (n * 75) + 'px)',
+                     top: 'calc(50% - ' + (n * 75) + 'px)',
+                     animationDelay: (n - 1) + 's'
+                 }"
+                 class="radar-circle">
+            </div>
+
+            <!-- Nearby Profiles -->
+            <div v-for="profile in nearbyProfiles" 
+                 :key="profile.id"
+                 @click="showProfileInfo(profile)"
+                 :style="{
+                     left: profile.x + '%',
+                     top: profile.y + '%'
+                 }"
+                 class="nearby-profile">
+                <div class="profile-marker bg-blue-500 rounded-full p-2 shadow-lg">
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <i class="bi bi-person text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Info Card -->
+            <div v-if="selectedProfile" 
+                 class="profile-info-card fixed bottom-0 left-0 right-0 p-4 rounded-t-xl profile-card">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-gray-200 rounded-full"></div>
+                        <div>
+                            <h3 class="font-bold text-lg">{{ selectedProfile.name }}</h3>
+                            <p class="text-sm text-gray-600">{{ selectedProfile.status }}</p>
+                        </div>
+                    </div>
+                    <button @click="selectedProfile = null" class="text-gray-500">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <div class="flex space-x-3 mb-4">
+                    <button class="flex-1 bg-blue-600 text-white py-2 rounded-lg">
+                        <i class="bi bi-chat-dots mr-2"></i>Message
+                    </button>
+                    <button class="flex-1 bg-gray-200 py-2 rounded-lg">
+                        <i class="bi bi-person-plus mr-2"></i>Follow
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                        <span class="text-sm font-medium">Recent Post</span>
+                    </div>
+                    <div class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                        <span class="text-sm font-medium">Activity</span>
+                    </div>
+                    <div class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                        <span class="text-sm font-medium">More</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="absolute bottom-20 right-4 space-y-4">
+                <button class="sos-pulse bg-red-600 text-white p-4 rounded-full shadow-lg">
+                    <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+                </button>
+                <button class="bg-blue-600 text-white p-4 rounded-full shadow-lg">
+                    <i class="bi bi-plus-lg text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 w-full border-t bg-white flex justify-around py-3">
+            <button @click="currentView = 'map'" class="text-blue-600">
+                <i class="bi bi-map text-xl"></i>
+            </button>
+            <button class="text-gray-600">
+                <i class="bi bi-house text-xl"></i>
+            </button>
+            <button class="text-gray-600">
+                <i class="bi bi-trophy text-xl"></i>
+            </button>
+            <button class="text-gray-600">
+                <i class="bi bi-person text-xl"></i>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    currentView: 'map',
+                    selectedProfile: null,
+                    nearbyProfiles: [
+                        { id: 1, name: 'Sarah M.', status: 'Looking for help', x: 45, y: 48 },
+                        { id: 2, name: 'Mike R.', status: 'Available to assist', x: 55, y: 52 },
+                        { id: 3, name: 'Emma K.', status: 'Selling items', x: 48, y: 45 },
+                        { id: 4, name: 'James L.', status: 'Needs emergency supplies', x: 52, y: 55 }
+                    ]
+                }
+            },
+            methods: {
+                showProfileInfo(profile) {
+                    this.selectedProfile = profile;
+                }
+            },
+            mounted() {
+                // Simulate profile movement
+                setInterval(() => {
+                    this.nearbyProfiles = this.nearbyProfiles.map(profile => ({
+                        ...profile,
+                        x: profile.x + (Math.random() - 0.5) * 2,
+                        y: profile.y + (Math.random() - 0.5) * 2
+                    }));
+                }, 3000);
+            }
+        }).mount('#app')
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
